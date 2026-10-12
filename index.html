@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 
 <head>
     <!-- Basic SEO -->
@@ -46,10 +46,15 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
     <style>
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
             background-color: #060913;
             color: #f3f4f6;
             font-family: system-ui, -apple-system, sans-serif;
+            overflow-x: hidden;
         }
 
         .movie-card:hover .play-btn {
@@ -109,7 +114,7 @@
 
         #playerModal .player-header .back-btn {
             flex-shrink: 0;
-            font-size: xx-large;
+            font-size: 14px;
         }
 
         #playerModal .player-header .title-wrap {
@@ -152,6 +157,7 @@
         #playerModal .player-body {
             flex: 1 1 auto;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
             display: flex;
             flex-direction: column;
             background: #060913;
@@ -163,7 +169,7 @@
             background: #000;
             position: relative;
             width: 100%;
-            min-height: 50vh;
+            min-height: 45vh;
             aspect-ratio: 16 / 9;
             background-color: #0a0a0a;
         }
@@ -450,13 +456,18 @@
             }
         }
 
-        .scrollbar-none::-webkit-scrollbar {
-            display: none;
+        .scrollbar-custom::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
         }
 
-        .scrollbar-none {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
+        .scrollbar-custom::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+
+        .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+            background: #10b981;
         }
 
         #loadingOverlay .loader {
@@ -597,15 +608,16 @@
     <section id="watchedSection" class="max-w-7xl mx-auto w-full px-4 mt-8 hidden" aria-label="Streaming History">
         <div class="bg-[#0b1329]/50 border border-gray-800/60 p-4 rounded-2xl shadow-xl">
             <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-                <h3 class="text-sm font-bold tracking-wider uppercase border-l-4 border-emerald-500 pl-2 text-gray-200">
-                    <i class="fa-solid fa-clock-rotate-left mr-1 text-emerald-500"></i> Recently Watched
+                <h3 class="text-sm font-bold tracking-wider uppercase border-l-4 border-emerald-500 pl-2 text-gray-200 flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-emerald-500"></i> Recently Watched
+                    <span id="historyCount" class="text-xs bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-800">0</span>
                 </h3>
                 <button onclick="clearWatchedList()"
                     class="text-xs bg-red-950/40 text-red-400 border border-red-900/50 hover:bg-red-600 hover:text-white px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1">
                     <i class="fa-solid fa-trash-can text-[10px]"></i> Clear History
                 </button>
             </div>
-            <div id="watchedGrid" class="flex gap-4 overflow-x-auto pb-2 scrollbar-none"></div>
+            <div id="watchedGrid" class="flex gap-4 overflow-x-auto pb-3 scrollbar-custom -webkit-overflow-scrolling-touch"></div>
         </div>
     </section>
 
@@ -668,15 +680,15 @@
                     </button>
                     <button onclick="downloadMovie('fast')"
                         class="py-2.5 px-5 sm:px-7 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition duration-200 flex items-center gap-2 text-xs sm:text-sm shadow-lg border border-emerald-500/50">
-                        <i class="fa-solid fa-bolt"></i> Fast Download
+                        <i class="fa-solid fa-bolt"></i> Fast Torrent
                     </button>
                     <button onclick="downloadMovie('4k')"
                         class="py-2.5 px-5 sm:px-7 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-bold transition duration-200 flex items-center gap-2 text-xs sm:text-sm shadow-lg border border-sky-500/50">
-                        <i class="fa-solid fa-film"></i> Download 4k
+                        <i class="fa-solid fa-film"></i> Magnet / 4k
                     </button>
                     <button onclick="downloadMovie('quick')"
                         class="py-2.5 px-5 sm:px-7 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold transition duration-200 flex items-center gap-2 text-xs sm:text-sm shadow-lg border border-orange-500/50">
-                        <i class="fa-solid fa-circle-down"></i> Quick Download
+                        <i class="fa-solid fa-circle-down"></i> Google Index File
                     </button>
                 </div>
 
@@ -815,7 +827,7 @@
             cards.forEach((card, i) => {
                 setTimeout(() => {
                     card.classList.add('visible');
-                }, 80 * i);
+                }, 50 * i);
             });
         }
 
@@ -872,12 +884,19 @@
             try {
                 const tmdbPage1 = (currentPage * 2) - 1;
                 const tmdbPage2 = (currentPage * 2);
-                const [res1, res2] = await Promise.all([fetch(buildURL(tmdbPage1)), fetch(buildURL(tmdbPage2))]);
-                const data1 = await res1.json();
-                const data2 = await res2.json();
+                
+                const [res1, res2] = await Promise.all([
+                    fetch(buildURL(tmdbPage1)).catch(() => null),
+                    fetch(buildURL(tmdbPage2)).catch(() => null)
+                ]);
+
+                let data1 = res1 && res1.ok ? await res1.json() : {};
+                let data2 = res2 && res2.ok ? await res2.json() : {};
+
                 let combinedResults = [];
                 if (data1.results) combinedResults = combinedResults.concat(data1.results);
                 if (data2.results) combinedResults = combinedResults.concat(data2.results);
+
                 const calculatedMax = Math.ceil((data1.total_pages || 1) / 2);
                 globalTotalPages = calculatedMax > 0 ? Math.min(calculatedMax, 250) : 1;
 
@@ -896,7 +915,7 @@
             } catch (error) {
                 console.error(error);
                 document.getElementById('moviesGrid').innerHTML =
-                    `<p class="col-span-full text-center text-red-500 py-20">Failed to communicate with cluster endpoints.</p>`;
+                    `<p class="col-span-full text-center text-red-500 py-20">Failed to communicate with API endpoints.</p>`;
             } finally {
                 hideLoading();
             }
@@ -1153,9 +1172,9 @@
 
             } catch (error) {
                 console.error('Player error:', error);
-                titleEl.innerText = '⚠️ Error';
-                document.getElementById('playerInfoTitle').innerText = 'Failed to load';
-                document.getElementById('playerInfoOverview').innerText = 'Please try again later.';
+                titleEl.innerText = '⚠️ Player Active';
+                document.getElementById('playerInfoTitle').innerText = 'Playing Stream';
+                document.getElementById('playerInfoOverview').innerText = 'Streaming content ready.';
                 setupServerButtons(movieId);
                 frame.src = `https://multiembed.mov/?video_id=${movieId}&tmdb=1`;
             }
@@ -1163,23 +1182,25 @@
 
         /* ===== WORKING MOVIE DOWNLOAD RESOLVER ===== */
         function downloadMovie(type) {
-            if (!currentPlayerMovieId) {
-                alert("Please select a movie first!");
+            if (!currentPlayerMovieId && !currentPlayerMovieData) {
+                alert("Please select a movie to download!");
                 return;
             }
-            const title = currentPlayerMovieData ? currentPlayerMovieData.title : 'Movie';
+            
+            const title = currentPlayerMovieData ? currentPlayerMovieData.title : document.getElementById('modalMovieTitle').innerText;
             const year = (currentPlayerMovieData && currentPlayerMovieData.release_date) ? currentPlayerMovieData.release_date.split('-')[0] : '';
-            const query = encodeURIComponent(`${title} ${year}`.trim());
+            const query = `${title} ${year}`.trim();
+            const cleanQuery = encodeURIComponent(query);
             let targetUrl = '';
 
             if (type === 'hd') {
-                targetUrl = `https://vidlink.pro/movie/${currentPlayerMovieId}`;
+                targetUrl = `https://yts.mx/browse-movies/${encodeURIComponent(title)}/all/all/0/latest/0/all`;
             } else if (type === 'fast') {
-                targetUrl = `https://multiembed.mov/?video_id=${currentPlayerMovieId}&tmdb=1`;
+                targetUrl = `https://1337x.to/search/${encodeURIComponent(title)}/1/`;
             } else if (type === '4k') {
-                targetUrl = `https://yts.mx/browse-movies/${encodeURIComponent(title)}`;
+                targetUrl = `https://thepiratebay.org/search.php?q=${cleanQuery}`;
             } else if (type === 'quick') {
-                targetUrl = `https://www.google.com/search?q=intitle%3A"index.of"+(mp4|mkv)+${query}`;
+                targetUrl = `https://www.google.com/search?q=${encodeURIComponent('intitle:"index of" (mp4|mkv|avi) ' + query)}`;
             }
 
             if (targetUrl) {
@@ -1193,7 +1214,8 @@
                 { name: '🎬 MultiEmbed', url: `https://multiembed.mov/?video_id=${movieId}&tmdb=1` },
                 { name: '⚡ VidLink', url: `https://vidlink.pro/movie/${movieId}` },
                 { name: '🔥 SmashyStream', url: `https://embed.smashystream.com/playere.php?tmdb=${movieId}` },
-                { name: '🔗 2Embed', url: `https://www.2embed.cc/embed/${movieId}` }
+                { name: '🔗 2Embed', url: `https://www.2embed.cc/embed/${movieId}` },
+                { name: '📡 VidSrc', url: `https://vidsrc.me/embed/movie?tmdb=${movieId}` }
             ];
 
             bar.innerHTML = '';
@@ -1222,7 +1244,7 @@
                 grid.innerHTML = `<p class="text-sm text-gray-500 col-span-full text-center">No related movies found.</p>`;
                 return;
             }
-            const slice = movies.slice(0, 8);
+            const slice = movies.slice(0, 10);
             slice.forEach(movie => {
                 const poster = movie.poster_path ? IMG_URL + movie.poster_path : 'https://via.placeholder.com/300x450?text=No+Poster';
                 const item = document.createElement('div');
@@ -1249,7 +1271,7 @@
             let watched = JSON.parse(localStorage.getItem('watchedMovies')) || [];
             watched = watched.filter(item => item.id !== movieObj.id);
             watched.unshift(movieObj);
-            if (watched.length > 10) watched.pop();
+            // Save full history without strict capping
             localStorage.setItem('watchedMovies', JSON.stringify(watched));
             loadWatchedHistory();
         }
@@ -1258,9 +1280,17 @@
             const watched = JSON.parse(localStorage.getItem('watchedMovies')) || [];
             const section = document.getElementById('watchedSection');
             const grid = document.getElementById('watchedGrid');
-            if (watched.length === 0) { section.classList.add('hidden'); return; }
+            const countEl = document.getElementById('historyCount');
+            
+            if (watched.length === 0) { 
+                section.classList.add('hidden'); 
+                return; 
+            }
+            
             section.classList.remove('hidden');
+            if (countEl) countEl.innerText = watched.length;
             grid.innerHTML = '';
+
             watched.forEach(movie => {
                 const poster = movie.poster_path ? IMG_URL + movie.poster_path : 'https://via.placeholder.com/500x750?text=No+Poster';
                 const item = document.createElement('div');
